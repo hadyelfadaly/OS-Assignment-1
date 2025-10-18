@@ -1,4 +1,3 @@
-import java.util.Objects;
 import java.util.Scanner;
 import java.io.File;
 
@@ -14,7 +13,7 @@ class Parser
         //remove any trailing spaces
         input = input.trim();
 
-        if(input == null || input.isEmpty()) return false;
+        if(input.isEmpty()) return false;
 
         String[] parts = input.split(" ");
 
@@ -35,21 +34,22 @@ class Parser
         return true;
 
     }
-    public String getCommandName(){return commandName;}
-    public String[] getArgs(){return args;}
+    public String getCommandName() {return commandName;}
+    public String[] getArgs() {return args;}
 
 }
 class Terminal
 {
 
-    Parser parser;
+    private Parser parser;
     private String currentDirectory; //a variable to save the current directory to use in implementing cd
 
     Terminal()
     {
 
         parser = new Parser();
-        currentDirectory = new String(System.getProperty("user.dir"));//saves current path into it
+        currentDirectory = System.getProperty("user.dir"); //saves current path
+        // into the variable when an instance of terminal is created
 
     }
 
@@ -57,13 +57,15 @@ class Terminal
     public void cd(String[] args)
     {
 
-        //to handle directories with space in their name
+        //to handle directories with space in their name like "Operating Systems" as it should be read as 1 arg not multiple ones
         String path = String.join(" ", args);
 
+        //if no args change dir to home dir
         if(args.length == 0) System.out.println(System.getProperty("user.home"));
-        else if(args[0].equals(".."))
+        else if(args[0].equals("..")) //if arg = .. go to parent dir
         {
 
+            //create file object from the path
             File current = new File(currentDirectory);
             String parent = current.getParent();
 
@@ -85,8 +87,7 @@ class Terminal
 
             //if its short path (relative), combine it with the current path
             if(!newPath.isAbsolute()) newPath = new File(currentDirectory, args[0]);
-            //make sure this path exists and that its a directory
-            if(newPath.exists() && newPath.isDirectory())
+            if(newPath.exists() && newPath.isDirectory()) //make sure this path exists and that its a directory
             {
 
                 currentDirectory = newPath.getAbsolutePath();
