@@ -1,3 +1,5 @@
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Scanner;
 import java.io.File;
 
@@ -100,11 +102,127 @@ class Terminal
         }
 
     }
+    public void mkdir(String[] args)
+    {
+
+        //to handle directories with space in their name like "Operating Systems" as it should be read as 1 arg not multiple ones
+        String path = String.join(" ", args);
+        File testPath = new File(path);
+
+        if(args.length == 0)
+        {
+
+            System.out.println("mkdir: missing operand");
+
+            return;
+
+        }
+        else if(args.length == 1)
+        {
+
+            //create file object of our arg
+            File ourArg =  new File(args[0]);
+
+            //if the argument is a path
+            if(ourArg.isAbsolute())
+            {
+
+                //if this path doesnt exist create the new dir in the end of the path
+                if(!ourArg.exists())
+                {
+
+                    ourArg.mkdir();
+
+                    return;
+
+                }
+                else
+                {
+
+                    System.out.println("mkdir: cannot create directory " + args[0] + " File exists");
+
+                    return;
+
+                }
+
+            }
+            else //argument is just a directory name
+            {
+
+                ourArg = new File(currentDirectory, args[0]); //creates a new path for the intended file we want to create
+
+                //if the dir of same name already exists
+                if(ourArg.exists() && ourArg.isDirectory())
+                {
+
+                    System.out.println("mkdir: cannot create directory " + args[0] + " File exists");
+
+                    return;
+
+                }
+                else if(!ourArg.exists()) //if dir doesnt exist create it in current path
+                {
+
+                    ourArg.mkdir();
+
+                    return;
+
+                }
+
+            }
+
+        }
+
+        if(testPath.isAbsolute())
+        {
+
+            //if this path doesnt exist create the new dir in the end of the path
+            if(!testPath.exists())
+            {
+
+                testPath.mkdir();
+
+                return;
+
+            }
+            else
+            {
+
+                System.out.println("mkdir: cannot create directory " + path + " File exists");
+
+                return;
+
+            }
+
+        }
+
+
+        //array to store the dirs we gonna create (ArrayList for dynamic size);
+        ArrayList<String> newDirs = new ArrayList<>();
+
+        for(String s : args)
+        {
+
+            //create file object of the dir or path
+            File file = new File(s);
+
+            if(!file.isDirectory()) newDirs.add(s);
+            else if(file.isDirectory() || file.isAbsolute())
+            {
+
+                //if(newDirs.size() == 1)
+
+            }
+
+        }
+
+    }
     public void chooseCommandAction()
     {
 
         if(parser.getCommandName().equals("pwd")) System.out.println(pwd());
         else if(parser.getCommandName().equals("cd")) cd(parser.getArgs());
+        else if(parser.getCommandName().equals("mkdir")) mkdir(parser.getArgs());
 
     }
     public static void main(String[] args)
