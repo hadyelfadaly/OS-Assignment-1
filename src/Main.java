@@ -227,8 +227,11 @@ class Terminal
 
         if(args.length > 0)
         {
+
             System.out.println("this command takes no arguments"); // Check for arguments
+
             return;
+
         }
 
         File dir = new File(currentDirectory); // find current directory
@@ -236,114 +239,141 @@ class Terminal
 
         if(contents != null)
         {
+
             List<String> list = Arrays.asList(contents); // sort alphabetically
+
             Collections.sort(list);
-            for(String item : list)
-            {
-                System.out.println(item); // print items
-            }
+
+            for(String item : list) System.out.print(item + "  "); // print items
+
+            System.out.print("\n"); //start from a new line when it finishes listing
+
         }
-        else
-        {
-            System.out.println("Error: Can't list directory contents");
-        }
+        else System.out.println("Error: Can't list directory contents");
 
     }
-
-
     public void cp(String[] args)
     {
 
         if(args.length != 2)
         {
-            System.out.println("cp: must be 2 arguments"); // validate the arguments must be cp <source> <destination>
+
+            System.out.println("cp: must be 2 arguments"); //validate the arguments must be cp <source> <destination>
+
             return;
+
         }
 
         if(args[0].equals("-r"))
         {
+
             System.out.println("cp: missing arguments");
+
             return;
+
         }
 
-        // make the file pathes
+        //make file objects of given arguments
         File source = new File(args[0]);
         File destination = new File(args[1]);
 
+        //construct paths if not given fully
         if(!source.isAbsolute()) source = new File(currentDirectory, args[0]);
         if(!destination.isAbsolute()) destination = new File(currentDirectory, args[1]);
 
-        if(!source.exists() || !source.isFile())  // make sure source file exists
+        if(!source.exists() || !source.isFile())  //make sure source file exists
         {
+
             System.out.println("cp: source file does not exist");
+
             return;
         }
 
+
         try
         {
-            Files.copy(source.toPath(), destination.toPath(), StandardCopyOption.REPLACE_EXISTING); // copy the file
+
+            //using toPath() function to convert file object to path object
+            Files.copy(source.toPath(), destination.toPath(), StandardCopyOption.REPLACE_EXISTING); //copy the file
+
         }
-        catch(IOException e)
+        catch(IOException error) //catches input or output or file operations errors
         {
+
             System.out.println("cp: error");
+
         }
 
     }
-
     public void cp_r(String[] args)
     {
 
-        if(args.length != 3 || !args[0].equals("-r")) // validate argu and format
+        if(args.length != 3 || !args[0].equals("-r")) //validate arguments and format
         {
+
             System.out.println("cp -r: must be cp -r <sourceDir> <destinationDir>");
+
             return;
+
         }
-        // for paths
+
+        //make file objects of given arguments
         File sourceDir = new File(args[1]);
         File destDir = new File(args[2]);
 
+        //construct paths if not given fully
         if(!sourceDir.isAbsolute()) sourceDir = new File(currentDirectory, args[1]);
         if(!destDir.isAbsolute()) destDir = new File(currentDirectory, args[2]);
 
-        if(!sourceDir.exists() || !sourceDir.isDirectory()) // check if the source is a directory
+        if(!sourceDir.exists() || !sourceDir.isDirectory()) //check if the source exists and it is a directory
         {
+
             System.out.println("cp -r: source is not a valid ");
+
             return;
+
         }
 
         try
         {
+
+            //helper function to copy directories
             copyDirectoryRecursive(sourceDir, new File(destDir, sourceDir.getName()));
+
         }
-        catch(IOException e)
+        catch(IOException error) //catches input or output or file operations errors
         {
+
             System.out.println("cp -r: error copying directory");
+
         }
 
     }
-    // Helper Method for Recursive Copy
+    //helper function for recursive copy
     private void copyDirectoryRecursive(File source, File dest) throws IOException
     {
 
+        //create dest dir if it does not exist
         if(!dest.exists()) dest.mkdir();
 
+        //array of all contents in the source
         File[] files = source.listFiles();
 
         if(files != null)
         {
+
+            //copy file by file
             for(File file : files)
             {
+
                 File newDest = new File(dest, file.getName());
 
-                if(file.isDirectory())
-                {
-                    copyDirectoryRecursive(file, newDest);
-                }
-                else
-                {
-                    Files.copy(file.toPath(), newDest.toPath(), StandardCopyOption.REPLACE_EXISTING);
-                }
+                //if the file is a directory call the function recursively
+                if(file.isDirectory()) copyDirectoryRecursive(file, newDest);
+                else Files.copy(file.toPath(), newDest.toPath(), StandardCopyOption.REPLACE_EXISTING);
+
             }
+
         }
 
     }
@@ -354,13 +384,14 @@ class Terminal
         if(parser.getCommandName().equals("pwd")) System.out.println(pwd());
         else if(parser.getCommandName().equals("cd")) cd(parser.getArgs());
         else if(parser.getCommandName().equals("mkdir")) mkdir(parser.getArgs());
-
         else if(parser.getCommandName().equals("ls")) ls(parser.getArgs());
         else if(parser.getCommandName().equals("cp"))
         {
             String[] arguments = parser.getArgs();
+
             if(arguments.length > 0 && arguments[0].equals("-r")) cp_r(arguments);
             else cp(arguments);
+
         }
 
     }
