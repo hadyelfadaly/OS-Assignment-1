@@ -33,7 +33,52 @@ class Parser
 
             args = new String[parts.length - 1];
 
-            for(int i = 1; i < parts.length; i++) args[i-1] = parts[i];
+            for(int i = 1; i < parts.length; i++)
+            {
+
+                if(parts[i].charAt(0) == '\'')
+                {
+
+                    //if argument name is between quotes
+                    if(parts[i].charAt(parts[i].length()-1) == '\'')
+                    {
+
+                        parts[i] = parts[i].substring(1,  parts[i].length()-1); //argument without the quotes
+                        args[i-1] = parts[i];
+
+                    }
+                    else
+                    {
+
+                        int j = i;
+                        ArrayList<String> quotedArguments = new ArrayList<>(); //arraylist to hold the argument between quotes
+
+                        //add first word without its starting '
+                        quotedArguments.add(parts[j].substring(1));
+                        j++;
+
+                        //add in between words
+                        while(parts[j].charAt(parts[j].length()-1) != '\'')
+                        {
+
+                            quotedArguments.add(parts[j]);
+                            j++;
+
+                        }
+
+                        //add last word without last '
+                        quotedArguments.add(parts[j].substring(0, parts[j].length()-1));
+
+                        args[i-1] = String.join(" ", quotedArguments);
+
+                        i = j;
+
+                    }
+
+                }
+                else args[i-1] = parts[i];
+
+            }
 
         }
         else args = new String[0]; //if no arguments make empty arguments array
