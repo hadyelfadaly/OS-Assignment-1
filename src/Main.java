@@ -422,6 +422,125 @@ class Terminal
         }
 
     }
+    public void touch(String[] args)
+{
+    //if user didn't write anything
+    if(args.length == 0)
+    {
+        System.out.println("touch: missing file ");
+        return;
+    }
+
+    // join all args to handle file name with spaces
+    String path = String.join(" ", args);
+
+
+    File file = new File(path);
+
+    // if user didn't write full path
+    if(!file.isAbsolute())
+        file = new File(currentDirectory, path);
+
+    try
+    {
+        // if file already exist
+        if(file.exists())
+        {
+            // update to modify file
+            boolean updated = file.setLastModified(System.currentTimeMillis());
+            if(!updated)
+                System.out.println("touch: failed to update timestamp for " + file.getName());
+        }
+        else
+        {
+            // create file
+            boolean created = file.createNewFile();
+            if(!created)
+                System.out.println("touch: failed to create file " + file.getName());
+        }
+    }
+    catch(IOException e)
+    {
+        // exception 
+        System.out.println("touch: error - " + e.getMessage());
+    }
+}
+public void rmdir(String[] args)
+{
+    // Check if user wrote any argument
+    if(args.length == 0)
+    {
+        System.out.println("rmdir: missing ");
+        return;
+    }
+
+    // Case 1: if argument is "*"
+    if(args.length == 1 && args[0].equals("*"))
+    {
+        File currentDir = new File(currentDirectory);
+        File[] contents = currentDir.listFiles();
+
+        if(contents != null)
+        {
+            for(File item : contents)
+            {
+                // delete only empty directories
+                if(item.isDirectory())
+                {
+                    File[] inside = item.listFiles();
+                    if(inside != null && inside.length == 0)
+                    {
+                        boolean deleted = item.delete();
+                        if(deleted)
+                            System.out.println("Deleted empty directory: " + item.getName());
+                        else
+                            System.out.println("rmdir: failed to delete " + item.getName());
+                    }
+                }
+            }
+        }
+        else System.out.println("rmdir: cannot access current directory");
+
+        return;
+    }
+
+    // Case 2: deleting one specific directory
+    String path = String.join(" ", args); // handle names with spaces
+    File dir = new File(path);
+
+    // if user didn't write full path, attach current directory
+    if(!dir.isAbsolute())
+        dir = new File(currentDirectory, path);
+
+    if(!dir.exists())
+    {
+        System.out.println("rmdir: directory does not exist");
+        return;
+    }
+
+    if(!dir.isDirectory())
+    {
+        System.out.println("rmdir: not a directory");
+        return;
+    }
+
+    File[] filesInside = dir.listFiles();
+    if(filesInside != null && filesInside.length > 0)
+    {
+        System.out.println("rmdir: directory not empty");
+        return;
+    }
+
+    // now delete
+    boolean deleted = dir.delete();
+    if(deleted)
+        System.out.println("Directory deleted successfully: " + dir.getName());
+    else
+        System.out.println("rmdir: failed to delete " + dir.getName());
+}
+
+
+
 
     public void chooseCommandAction()
     {
@@ -430,6 +549,9 @@ class Terminal
         else if(parser.getCommandName().equals("cd")) cd(parser.getArgs());
         else if(parser.getCommandName().equals("mkdir")) mkdir(parser.getArgs());
         else if(parser.getCommandName().equals("ls")) ls(parser.getArgs());
+        else if(parser.getCommandName().equals("touch")) touch(parser.getArgs());
+        else if(parser.getCommandName().equals("rmdir")) rmdir(parser.getArgs());
+        
         else if(parser.getCommandName().equals("cp"))
         {
             String[] arguments = parser.getArgs();
