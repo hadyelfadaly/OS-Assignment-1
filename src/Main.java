@@ -1,20 +1,14 @@
-import java.nio.Buffer;
+import java.io.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
-import java.io.File;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.Files;
-import java.io.IOException;
 import java.util.Collections;
 import java.util.Arrays;
-import java.io.BufferedReader;
-import java.io.FileReader;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
 import java.util.zip.ZipEntry;
-import java.io.FileOutputStream;
-import java.io.FileInputStream;
 
 class Parser
 {
@@ -40,6 +34,7 @@ class Parser
         {
 
             args = new String[parts.length - 1];
+            int argIndex = 0;
 
             for(int i = 1; i < parts.length; i++)
             {
@@ -52,7 +47,7 @@ class Parser
                     {
 
                         parts[i] = parts[i].substring(1,  parts[i].length()-1); //argument without the quotes
-                        args[i-1] = parts[i];
+                        args[argIndex] = parts[i];
 
                     }
                     else
@@ -77,16 +72,61 @@ class Parser
                         //add last word without last '
                         quotedArguments.add(parts[j].substring(0, parts[j].length()-1));
 
-                        args[i-1] = String.join(" ", quotedArguments);
+                        args[argIndex] = String.join(" ", quotedArguments);
 
                         i = j;
 
                     }
 
                 }
-                else args[i-1] = parts[i];
+                else if(parts[i].charAt(0) == '"')
+                {
+
+                    //if argument name is between quotes
+                    if(parts[i].charAt(parts[i].length()-1) == '"')
+                    {
+
+                        parts[i] = parts[i].substring(1,  parts[i].length()-1); //argument without the quotes
+                        args[argIndex] = parts[i];
+
+                    }
+                    else
+                    {
+
+                        int j = i;
+                        ArrayList<String> quotedArguments = new ArrayList<>(); //arraylist to hold the argument between quotes
+
+                        //add first word without its starting '
+                        quotedArguments.add(parts[j].substring(1));
+                        j++;
+
+                        //add in between words
+                        while(parts[j].charAt(parts[j].length()-1) != '"')
+                        {
+
+                            quotedArguments.add(parts[j]);
+                            j++;
+
+                        }
+
+                        //add last word without last '
+                        quotedArguments.add(parts[j].substring(0, parts[j].length()-1));
+
+                        args[argIndex] = String.join(" ", quotedArguments);
+
+                        i = j;
+
+                    }
+
+                }
+                else args[argIndex] = parts[i];
+
+                argIndex++;
 
             }
+
+            //if arguments after joining is smaller than arg og size then resize it
+            if (argIndex < args.length) args = Arrays.copyOf(args, argIndex);
 
         }
         else args = new String[0]; //if no arguments make empty arguments array
@@ -101,6 +141,7 @@ class Parser
 class Terminal
 {
 
+
     private Parser parser;
     private String currentDirectory; //a variable to save the current directory to use in implementing cd
 
@@ -113,7 +154,14 @@ class Terminal
 
     }
 
-    public String pwd() {return currentDirectory;}
+    public String pwd(String[] args)
+    {
+
+        if(args.length > 0) return "This Command Takes no Arguments";
+
+        return currentDirectory;
+
+    }
     public void cd(String[] args)
     {
 
@@ -163,10 +211,6 @@ class Terminal
     public void mkdir(String[] args)
     {
 
-        //to handle directories with space in their name like "Operating Systems" as it should be read as 1 arg not multiple ones
-        String path = String.join(" ", args);
-        File testPath = new File(path);
-
         if(args.length == 0)
         {
 
@@ -175,120 +219,49 @@ class Terminal
             return;
 
         }
-        else if(args.length == 1)
+
+        //iterate over args
+        for(int i = 0; i < args.length; i++)
         {
 
-            //create file object of our arg
-            File ourArg =  new File(args[0]);
+            //create object file from the arg
+            File file = new File(args[i]);
 
-            //if the argument is a path
-            if(ourArg.isAbsolute())
+           if(!file.isAbsolute()) file = new File(currentDirectory, args[i]); //get full path if not given
+           if(file.exists() && file.isDirectory()) //if file exists
             {
 
-                //if this path doesnt exist create the new dir in the end of the path
-                if(!ourArg.exists())
-                {
+                System.out.println("mkdir: cannot create directory " + args[i] + " : File exists");
 
-                    ourArg.mkdir();
-
-                    return;
-
-                }
-                else
-                {
-
-                    System.out.println("mkdir: cannot create directory " + args[0] + " File exists");
-
-                    return;
-
-                }
-
-            }
-            else //argument is just a directory name
-            {
-
-                ourArg = new File(currentDirectory, args[0]); //creates a new path for the intended file we want to create
-
-                //if the dir of same name already exists
-                if(ourArg.exists() && ourArg.isDirectory())
-                {
-
-                    System.out.println("mkdir: cannot create directory " + args[0] + " File exists");
-
-                    return;
-
-                }
-                else if(!ourArg.exists()) //if dir doesnt exist create it in current path
-                {
-
-                    ourArg.mkdir();
-
-                    return;
-
-                }
+                continue;
 
             }
 
-        }
-
-        if(testPath.isAbsolute())
-        {
-
-            //if this path doesnt exist create the new dir in the end of the path
-            if(!testPath.exists())
+            try
             {
 
-                testPath.mkdir();
-
-                return;
+                file.mkdir();
 
             }
-            else
+            catch(Exception error)
             {
 
-                System.out.println("mkdir: cannot create directory " + path + " File exists");
-
-                return;
-
-            }
-
-        }
-
-
-        //array to store the dirs we gonna create (ArrayList for dynamic size);
-        ArrayList<String> newDirs = new ArrayList<>();
-
-        for(String s : args)
-        {
-
-            //create file object of the dir or path
-            File file = new File(s);
-
-            if(!file.isDirectory()) newDirs.add(s);
-            else if(file.isDirectory() || file.isAbsolute())
-            {
-
-                //if(newDirs.size() == 1)
+                    System.out.println("mkdir: cannot create directory " + args[i] + " : " + error);
 
             }
 
         }
 
     }
-    public void ls(String[] args)
+    public String ls(String[] args)
     {
 
         if(args.length > 0)
-        {
-
-            System.out.println("this command takes no arguments"); //check for arguments
-
-            return;
-
-        }
+        {return "this command takes no arguments";}
 
         File dir = new File(currentDirectory); //find current directory
         String[] contents = dir.list(); //array of file names.
+        String result = "";
 
         if(contents != null)
         {
@@ -297,12 +270,12 @@ class Terminal
 
             Collections.sort(list);
 
-            for(String item : list) System.out.print(item + "  ");
-
-            System.out.print("\n"); //start from a new line when it finishes listing
+            for(String item : list) result += (item + "  ");
 
         }
-        else System.out.println("Error: Can't list directory contents");
+        else return "Error: Can't list directory contents";
+
+        return result;
 
     }
     public void cp(String[] args)
@@ -507,8 +480,7 @@ class Terminal
 
                             boolean deleted = item.delete();
 
-                            if(deleted) System.out.println("Deleted empty directory: " + item.getName());
-                            else System.out.println("rmdir: failed to delete " + item.getName());
+                            if(!deleted)  System.out.println("rmdir: failed to delete " + item.getName());
 
                         }
 
@@ -560,601 +532,908 @@ class Terminal
         //now delete
         boolean deleted = dir.delete();
 
-        if(deleted) System.out.println("Directory deleted successfully: " + dir.getName());
-        else System.out.println("rmdir: failed to delete " + dir.getName());
+        if(!deleted)  System.out.println("rmdir: failed to delete " + dir.getName());
 
     }
-
-public void rm(String[] args)
-{
-    //checking for an input file
-    if(args.length==0)
+    public void rm(String[] args)
     {
 
-        System.out.println("ERROR , Enter filename. ");
-        return;
+        if(args.length == 0)
+        {
 
-    }
+            System.out.println("rm: missing operand");
 
-    //handling files with spaces in its name.
-    String filename = String.join(" ",args);
+            return;
 
-    File file = new File(filename);
+        }
 
-    //checking if not abs path then use current dir
-    if(!file.isAbsolute())
-    {
-        file = new File (currentDirectory,filename);
-
-    }
-
-    if(!file.exists())
-    {
-
-        System.out.println("No such a file. ");
-
-        return;
-
-    }
-
-    boolean deleted = file.delete();
-
-    if(deleted) return;
-
-    else System.out.println(filename + " : Cannot be deleted. ");
-
-}
-
-
-public void cat(String[] args) {
-
-    if (args.length == 0) {
-
-        System.out.println("Enter argument. ");
-
-        return;
-
-    }
-
-    if (args.length > 2) {
-
-        System.out.println("Maximum 1 or 2 arguments only. ");
-
-    }
-
-    //First case 1 argument
-
-    if (args.length == 1) {
-
-        String filename = args[0];
+        //to handle files with space in their name
+        String filename = String.join(" ", args);
         File file = new File(filename);
 
-        //checking if not abs path then use current dir
-        if (!file.isAbsolute()) {
-            file = new File(currentDirectory, filename);
-        }
+        //if not absolute get full path
+        if(!file.isAbsolute()) file = new File(currentDirectory, filename);
+        if(!file.exists())
+        {
 
-        //checking if the file exists
-        if (!file.exists()) {
-            System.out.println("No such file. ");
+            System.out.println("No such a file. ");
 
             return;
+
         }
 
-        if (!file.isFile()) {
-            System.out.println(filename + "is a directory");
+        boolean deleted = file.delete();
+
+        if(!deleted) System.out.println(filename + " : Cannot be deleted. ");
+
+    }
+    public String cat(String[] args)
+    {
+
+        if(args.length == 0)
+        {return "cat : invalid operand";}
+        if(args.length > 2)
+        {return "Invalid Input";}
+
+        String result = "";
+
+        if(args.length == 1)
+        {
+
+            //create object file from the argument
+            String filename = args[0];
+            File file = new File(filename);
+
+            //if not full path create its fullpath
+            if(!file.isAbsolute()) file = new File(currentDirectory, filename);
+            if(!file.exists()) return "No such file.";
+            if(!file.isFile()) return filename + " is a directory";
+
+            //using bufferedReader class to read contents of files
+            BufferedReader reader = null;
+
+            try
+            {
+
+                reader = new BufferedReader(new FileReader(file));
+                String line;
+
+                while((line = reader.readLine()) != null) result += line + "\n";
+
+                result = result.substring(0, result.length() - 1); //remove the last '\n'
+
+            }
+            catch(IOException error)
+            {
+
+                return "error reading file - " + error.getMessage();
+
+            }
+            finally
+            {
+
+                try
+                {
+
+                    //if reader created and read successfully then delete
+                    if(reader != null) reader.close();
+
+                }
+                catch(IOException error)
+                {
+
+                    return "error closing file";
+
+                }
+
+            }
+
+        }
+        else if(args.length == 2)
+        {
+
+            String fileName1 = args[0], fileName2 = args[1];
+            File file1 = new File(fileName1), file2 = new File(fileName2);
+
+            //get full paths of the files
+            if(!file1.isAbsolute()) file1 = new File(currentDirectory, fileName1);
+            if(!file2.isAbsolute()) file2 = new File(currentDirectory, fileName2);
+            if(!file1.exists()) return fileName1 + ": no such file";
+            if(!file2.exists()) return fileName2 + ": no such file";
+            if(!file1.isFile()) return fileName1 + ": is not a valid file";
+            if(!file2.isFile()) return fileName2 + ": is not a valid file";
+
+            BufferedReader reader1 = null, reader2 = null;
+
+            try
+            {
+
+                reader1 = new BufferedReader(new FileReader(file1));
+                String line;
+
+                while((line = reader1.readLine()) != null) result += line + "\n";
+
+                reader2 = new BufferedReader(new FileReader(file2));
+
+                while((line = reader2.readLine()) != null) result += line + "\n";
+
+                result = result.substring(0, result.length() - 1); //remove the last '\n'
+
+            }
+            catch(IOException error)
+            {
+
+                return "error reading files: " + error.getMessage();
+
+            }
+            finally
+            {
+
+                try
+                {
+
+                    if(reader1 != null) reader1.close();
+                    if(reader2 != null) reader2.close();
+
+                }
+                catch(IOException e)
+                {
+
+                    return "error closing files";
+
+                }
+
+            }
+
         }
 
+        return result;
+
+    }
+    public String wc(String[] args)
+    {
+
+        if(args.length == 0) return "wc: missing operand";
+
+        //to handle file with spaces in their names
+        String filename = String.join(" ", args);
+        File file = new File(filename);
+
+        //get full path if not given
+        if(!file.isAbsolute()) file = new File(currentDirectory, filename);
+        if(!file.exists()) return filename + " no such a file. ";
+        if(!file.isFile()) return filename + " is an invalid file. ";
+
+        //variables to store needed measures
+        int lines = 0, words = 0, charCount = 0;
         BufferedReader reader = null;
-        try {
-            reader = new BufferedReader(new FileReader(file));
-            String line;
-            while ((line = reader.readLine()) != null) {
-                System.out.println(line);
-            }
-        } catch (IOException e) {
-            System.out.println("error reading file - " + e.getMessage());
-        } finally {
-            try {
-                if (reader != null) reader.close();
-            } catch (IOException e) {
-                System.out.println("error closing file");
-            }
-        }
-    } else if (args.length == 2) {
-        String fileName1 = args[0];
-        String fileName2 = args[1];
 
-        File file1 = new File(fileName1);
-        File file2 = new File(fileName2);
-
-        // if not abs paths, use current dir
-        if (!file1.isAbsolute())
-            file1 = new File(currentDirectory, fileName1);
-        if (!file2.isAbsolute())
-            file2 = new File(currentDirectory, fileName2);
-
-        // Checking both files existing
-        if (!file1.exists()) {
-            System.out.println(fileName1 + ": no such file");
-            return;
-        }
-        if (!file2.exists()) {
-            System.out.println(fileName2 + ": no such file");
-            return;
-        }
-
-        // Checking if both are files
-        if (!file1.isFile()) {
-            System.out.println(fileName1 + ": is a directory");
-            return;
-        }
-        if (!file2.isFile()) {
-            System.out.println(fileName2 + ": is a directory");
-            return;
-        }
-
-        BufferedReader reader1 = null;
-        BufferedReader reader2 = null;
         try
         {
-            // Reading first file
-            reader1 = new BufferedReader(new FileReader(file1));
+
+            reader = new BufferedReader(new FileReader(file));
             String line;
-            while((line = reader1.readLine()) != null)
+
+            while((line = reader.readLine()) != null)
             {
-                System.out.println(line);
+
+                lines++;
+
+                String trimmedLine = line.trim();
+
+                if(!trimmedLine.isEmpty())
+                {
+
+                    String[] word = trimmedLine.split("\\s+");
+                    words += word.length;
+
+                    charCount += trimmedLine.length() - word.length + 1;
+
+                }
+
             }
 
-            // Read second file
-            reader2 = new BufferedReader(new FileReader(file2));
-            while((line = reader2.readLine()) != null)
-            {
-                System.out.println(line);
-            }
         }
-        catch(IOException e)
+        catch(IOException error)
         {
-            System.out.println("error reading files: " + e.getMessage());
+
+            return "error reading file - " + error.getMessage();
+
         }
         finally
         {
+
             try
             {
-                if(reader1 != null) reader1.close();
-                if(reader2 != null) reader2.close();
+
+                //if reader created and read successfully then delete
+                if(reader != null) reader.close();
+
             }
             catch(IOException e)
             {
-                System.out.println("error closing files");
+
+                return "error closing file";
+
             }
+
         }
-    }
-}
 
-public void wc(String [] args)
-{
-    if(args.length==0)
-    {
-
-        System.out.println("Enter an argument. ");
-
-        return;
+        return lines + " " + words + " " + charCount + " " + filename;
 
     }
-
-    String filename = String.join(" ",args);
-
-    File file = new File(filename);
-
-    if(!file.isAbsolute())
-    {
-        file = new File(currentDirectory,filename);
-    }
-
-    if(!file.exists())
+    public void zip(String[] args)
     {
 
-        System.out.println(filename + " no such a file. ");
-        return;
-
-    }
-
-    if(!file.isFile())
-    {
-        System.out.println(filename + " is a directory. ");
-        return;
-    }
-
-    int lines=0;
-    int words=0;
-    int charCount=0;
-
-    BufferedReader reader = null;
-
-    try
-    {
-        reader = new BufferedReader(new FileReader(file));
-        String line;
-        while((line = reader.readLine()) != null)
+        if(args.length < 2)
         {
-            lines++;
-            charCount += line.length();
 
-            // counting words split by space
-            String trimmedLine = line.trim();
-            if(!trimmedLine.isEmpty())
-            {
-                String[] word = trimmedLine.split("\\s+");
-                words += word.length;
-            }
+            System.out.println("zip: missing operand");
+
+            return;
+
         }
 
+        //creating object files for the zip file
+        String zipFileName = args[0];
+        File zipFile = new File(zipFileName);
 
-    }
-    catch(IOException e)
-    {
-        System.out.println("error reading file - " + e.getMessage());
-        return;
-    }
-    finally
-    {
+        //get its full path if not given
+        if(!zipFile.isAbsolute()) zipFile = new File(currentDirectory, zipFileName);
+
+        boolean recursive = false;
+        int startIndex = 1;
+
+        //check if its directory recursive
+        if(args[1].equals("-r"))
+        {
+
+            recursive = true;
+            startIndex = 2;
+
+            if(args.length < 3)
+            {
+
+                System.out.println("zip: -r requires directory path");
+
+                return;
+
+            }
+
+        }
+
         try
         {
-            if(reader != null) reader.close();
-        }
-        catch(IOException e)
-        {
-            System.out.println("error closing file");
-        }
-    }
 
-    // Print output in format: lines words characters filename
-    System.out.println(lines + " " + words + " " + charCount + " " + filename);
+            //both classes used to write data into a file and create new zip stream
+            FileOutputStream fos = new FileOutputStream(zipFile);
+            ZipOutputStream zos = new ZipOutputStream(fos);
 
-}
-public void zip(String[] args)
-{
-    // Check if we have enough arguments
-    if(args.length < 2)
-    {
-        System.out.println("zip: requires at least 2 arguments (archive name and file/directory)");
-        return;
-    }
+            //if directory recursive
+            if(recursive)
+            {
 
-    String zipFileName = args[0];
-    File zipFile = new File(zipFileName);
+                //getting dir path
+                String directoryPath = args[2];
+                File directory = new File(directoryPath);
 
-    if(!zipFile.isAbsolute())
-        {
-            zipFile = new File(currentDirectory, zipFileName);
-        }
-    
-    // Check if -r flag is present for recursive directory compression
-    boolean recursive = false;
-    int startIndex = 1;
-    
-    if(args[1].equals("-r"))
-    {
-        recursive = true;
-        startIndex = 2;
-        
-        if(args.length < 3)
-        {
-            System.out.println("zip: -r requires directory path");
-            return;
-        }
-    }
-    
-    try
-    {
-        // Create zip file
-        FileOutputStream fos = new FileOutputStream(zipFile);
-        ZipOutputStream zos = new ZipOutputStream(fos);
-        
-        if(recursive)
-        {
-            // Compress directory recursively
-            String directoryPath = args[2];
-            File directory = new File(directoryPath);
-            
-            if(!directory.isAbsolute())
-            {
-                directory = new File(currentDirectory, directoryPath);
-            }
-            
-            if(!directory.exists())
-            {
-                System.out.println("zip: directory does not exist: " + directoryPath);
-                zos.close();
-                fos.close();
-                return;
-            }
-            
-            if(!directory.isDirectory())
-            {
-                System.out.println("zip: path is not a directory: " + directoryPath);
-                zos.close();
-                fos.close();
-                return;
-            }
-            
-            // Zip the directory recursively
-            zipDirectory(directory, directory.getName(), zos);
-            
-        }
-        else
-        {
-            // Compress individual files
-            for(int i = startIndex; i < args.length; i++)
-            {
-                File fileToZip = new File(args[i]);
-                
-                if(!fileToZip.isAbsolute())
+                //get full path if not written
+                if(!directory.isAbsolute()) directory = new File(currentDirectory, directoryPath);
+                if(!directory.exists())
                 {
-                    fileToZip = new File(currentDirectory, args[i]);
-                }
-                
-                if(!fileToZip.exists())
-                {
-                    System.out.println("zip: file does not exist: " + args[i]);
-                    continue;
-                }
-                
-                if(fileToZip.isDirectory())
-                {
-                    System.out.println("zip: " + args[i] + " is a directory. Use -r flag for directories.");
-                    continue;
-                }
-                
-                // Add file to zip
-                addFileToZip(fileToZip, fileToZip.getName(), zos);
-            }
-        }
-        
-        zos.close();
-        fos.close();
-        System.out.println("Successfully created: " + zipFile.getName());
-        
-    }
-    catch(IOException e)
-    {
-        System.out.println("zip: error creating zip file: " + e.getMessage());
-    }
-}
-// Helper method to add a single file to zip
-private void addFileToZip(File file, String fileName, ZipOutputStream zos) throws IOException
-{
-    FileInputStream fis = new FileInputStream(file);
-    ZipEntry zipEntry = new ZipEntry(fileName);
-    zos.putNextEntry(zipEntry);
-    
-    byte[] buffer = new byte[1024];
-    int length;
-    while((length = fis.read(buffer)) >= 0)
-    {
-        zos.write(buffer, 0, length);
-    }
-    
-    zos.closeEntry();
-    fis.close();
-}
 
-// Helper method to recursively zip a directory
-private void zipDirectory(File folder, String parentFolder, ZipOutputStream zos) throws IOException
-{
-    File[] files = folder.listFiles();
-    
-    if(files == null)
-    {
-        return;
-    }
-    
-    for(File file : files)
-    {
-        if(file.isDirectory())
-        {
-            // Recursively zip subdirectory
-            zipDirectory(file, parentFolder + "/" + file.getName(), zos);
-        }
-        else
-        {
-            // Add file to zip with its relative path
-            addFileToZip(file, parentFolder + "/" + file.getName(), zos);
-        }
-    }
-}
-public void unzip(String[] args)
-{
-    // Check if we have the required arguments
-    if(args.length == 0)
-    {
-        System.out.println("unzip: missing zip file argument");
-        return;
-    }
-    
-    // Parse arguments to handle -d flag and spaces in paths
-    String zipFileName = null;
-    File extractDir = new File(currentDirectory);
-    
-    // Check if -d flag is present
-    boolean hasDFlag = false;
-    int dFlagIndex = -1;
-    
-    for(int i = 0; i < args.length; i++)
-    {
-        if(args[i].equals("-d"))
-        {
-            hasDFlag = true;
-            dFlagIndex = i;
-            break;
-        }
-    }
-    
-    if(hasDFlag)
-    {
-        // Extract zip file name (all args before -d)
-        if(dFlagIndex == 0)
-        {
-            System.out.println("unzip: missing zip file argument before -d");
-            return;
-        }
-        
-        String[] zipNameParts = Arrays.copyOfRange(args, 0, dFlagIndex);
-        zipFileName = String.join(" ", zipNameParts);
-        
-        // Extract destination directory (all args after -d)
-        if(dFlagIndex + 1 >= args.length)
-        {
-            System.out.println("unzip: missing destination directory after -d");
-            return;
-        }
-        
-        String[] destParts = Arrays.copyOfRange(args, dFlagIndex + 1, args.length);
-        String destPath = String.join(" ", destParts);
-        extractDir = new File(destPath);
-        
-        if(!extractDir.isAbsolute())
-        {
-            extractDir = new File(currentDirectory, destPath);
-        }
-    }
-    else
-    {
-        // No -d flag, all args are the zip file name
-        zipFileName = String.join(" ", args);
-    }
-    
-    // Create File object for zip file
-    File zipFile = new File(zipFileName);
-    
-    // Handle relative path for zip file
-    if(!zipFile.isAbsolute())
-    {
-        zipFile = new File(currentDirectory, zipFileName);
-    }
-    
-    // Check if zip file exists
-    if(!zipFile.exists())
-    {
-        System.out.println("unzip: file does not exist: " + zipFileName);
-        return;
-    }
-    
-    if(!zipFile.isFile())
-    {
-        System.out.println("unzip: not a file: " + zipFileName);
-        return;
-    }
-    
-    // Create extraction directory if it doesn't exist
-    if(!extractDir.exists())
-    {
-        boolean created = extractDir.mkdirs();
-        if(!created)
-        {
-            System.out.println("unzip: failed to create extraction directory");
-            return;
-        }
-    }
-    
-    // Extract the zip file
-    FileInputStream fis = null;
-    ZipInputStream zis = null;
-    
-    try
-    {
-        fis = new FileInputStream(zipFile);
-        zis = new ZipInputStream(fis);
-        ZipEntry entry;
-        
-        while((entry = zis.getNextEntry()) != null)
-        {
-            // Security check: prevent path traversal attacks
-            String entryName = entry.getName();
-            File newFile = new File(extractDir, entryName);
-            String canonicalDestPath = extractDir.getCanonicalPath();
-            String canonicalNewFilePath = newFile.getCanonicalPath();
-            
-            if(!canonicalNewFilePath.startsWith(canonicalDestPath + File.separator))
-            {
-                System.out.println("unzip: invalid entry path: " + entryName);
-                zis.closeEntry();
-                continue;
-            }
-            
-            // Create parent directories if needed
-            if(entry.isDirectory())
-            {
-                newFile.mkdirs();
+                    System.out.println("zip: directory does not exist: " + directoryPath);
+
+                    zos.close();
+                    fos.close();
+
+                    return;
+
+                }
+                if(!directory.isDirectory())
+                {
+
+                    System.out.println("zip: path is not a directory: " + directoryPath);
+
+                    zos.close();
+                    fos.close();
+
+                    return;
+
+                }
+
+                //call helper function to zip directories
+                zipDirectory(directory, directory.getName(), zos);
+
             }
             else
             {
-                // Create parent directories for file
-                File parent = newFile.getParentFile();
-                if(parent != null && !parent.exists())
+
+                //compress individual files
+                for(int i = startIndex; i < args.length; i++)
                 {
-                    parent.mkdirs();
+
+                    //create file object of the file we gonna zip
+                    File fileToZip = new File(args[i]);
+
+                    //get its full path
+                    if(!fileToZip.isAbsolute()) fileToZip = new File(currentDirectory, args[i]);
+                    if(!fileToZip.exists())
+                    {
+
+                        System.out.println("zip: file does not exist: " + args[i]);
+
+                        continue;
+
+                    }
+                    if(fileToZip.isDirectory())
+                    {
+
+                        System.out.println("zip: " + args[i] + " is a directory. Use -r flag for directories.");
+
+                        continue;
+
+                    }
+
+                    addFileToZip(fileToZip, fileToZip.getName(), zos);
+
                 }
-                
-                // Extract file
-                FileOutputStream fos = new FileOutputStream(newFile);
-                byte[] buffer = new byte[1024];
-                int length;
-                
-                while((length = zis.read(buffer)) > 0)
-                {
-                    fos.write(buffer, 0, length);
-                }
-                
-                fos.close();
+
             }
-            
-            zis.closeEntry();
+
+            zos.close();
+            fos.close();
+
+            System.out.println("Successfully created: " + zipFile.getName());
+
         }
-        
-        System.out.println("Successfully extracted: " + zipFile.getName());
+        catch(IOException error)
+        {
+
+            System.out.println("zip: error creating zip file: " + error.getMessage());
+
+        }
+
     }
-    catch(IOException e)
+    private void addFileToZip(File file, String fileName, ZipOutputStream zos) throws IOException
     {
-        System.out.println("unzip: error extracting zip file: " + e.getMessage());
+
+        //creates an input stream to read the raw data (bytes) from the file that is going to be zipped
+        FileInputStream fis = new FileInputStream(file);
+        ZipEntry zipEntry = new ZipEntry(fileName); //creating entry of the file we will add to the zip
+        //that holds its metadata
+
+        zos.putNextEntry(zipEntry);
+
+        //creates a temporary byte array to efficiently move data in chunks rather than byte by byte.
+        byte[] buffer = new byte[1024];
+        int length;
+
+        //reading the data of the file into the buffer then writes and compresses it
+        while((length = fis.read(buffer)) >= 0) zos.write(buffer, 0, length);
+
+        zos.closeEntry();
+        fis.close();
+
     }
-    finally
+    //helper function for recursive zipping
+    private void zipDirectory(File folder, String parentFolder, ZipOutputStream zos) throws IOException
     {
+
+        //listing files in the dir in an array
+        File[] files = folder.listFiles();
+
+        if(files == null) return;
+
+        for(File file : files)
+        {
+
+            if(file.isDirectory()) zipDirectory(file, parentFolder + "/" + file.getName(), zos);
+            else addFileToZip(file, parentFolder + "/" + file.getName(), zos);
+
+        }
+
+    }
+    public void unzip(String[] args)
+    {
+
+        if(args.length == 0)
+        {
+
+            System.out.println("unzip: missing zip file argument");
+
+            return;
+
+        }
+
+        String zipFileName = null;
+        File extractDir = new File(currentDirectory);
+        boolean hasDFlag = false;
+        int dFlagIndex = -1;
+
+        //check if the user wants to extract into different place
+        for(int i = 0; i < args.length; i++)
+        {
+
+            if(args[i].equals("-d"))
+            {
+
+                hasDFlag = true;
+                dFlagIndex = i;
+
+                break;
+
+            }
+
+        }
+        if(hasDFlag)
+        {
+
+            //check if the zip file name is given
+            if(dFlagIndex == 0)
+            {
+
+                System.out.println("unzip: missing zip file argument before -d");
+
+                return;
+
+            }
+
+            //getting zip file name while handling if it has any spaces in its name
+            String[] zipNameParts = Arrays.copyOfRange(args, 0, dFlagIndex);
+            zipFileName = String.join(" ", zipNameParts);
+
+            //check if destination is given
+            if(dFlagIndex + 1 >= args.length)
+            {
+
+                System.out.println("unzip: missing destination directory after -d");
+
+                return;
+
+            }
+
+            //getting destination while handling if there is any spaces in its name
+            String[] destParts = Arrays.copyOfRange(args, dFlagIndex + 1, args.length);
+            String destPath = String.join(" ", destParts);
+            extractDir = new File(destPath);
+
+            //getting its full path if not given
+            if(!extractDir.isAbsolute()) extractDir = new File(currentDirectory, destPath);
+
+        }
+        else zipFileName = String.join(" ", args);
+
+        //creating file object of the zip file name
+        File zipFile = new File(zipFileName);
+
+        //getting its full path
+        if(!zipFile.isAbsolute()) zipFile = new File(currentDirectory, zipFileName);
+        if(!zipFile.exists())
+        {
+
+            System.out.println("unzip: file does not exist: " + zipFileName);
+
+            return;
+
+        }
+        if(!zipFile.isFile())
+        {
+
+            System.out.println("unzip: not a file: " + zipFileName);
+
+            return;
+
+        }
+        if(!extractDir.exists())
+        {
+
+            boolean created = extractDir.mkdirs();
+
+            if(!created)
+            {
+
+                System.out.println("unzip: failed to create extraction directory");
+
+                return;
+
+            }
+
+        }
+
+        FileInputStream fis = null;
+        ZipInputStream zis = null;
+
         try
         {
-            if(zis != null) zis.close();
-            if(fis != null) fis.close();
-        }
-        catch(IOException e)
-        {
-            System.out.println("unzip: error closing streams");
-        }
-    }
-}
 
-    public void chooseCommandAction()
-{
-    if(parser.getCommandName().equals("pwd")) System.out.println(pwd());
-    else if(parser.getCommandName().equals("cd")) cd(parser.getArgs());
-    else if(parser.getCommandName().equals("mkdir")) mkdir(parser.getArgs());
-    else if(parser.getCommandName().equals("ls")) ls(parser.getArgs());
-    else if(parser.getCommandName().equals("touch")) touch(parser.getArgs());
-    else if(parser.getCommandName().equals("rmdir")) rmdir(parser.getArgs());
-    else if(parser.getCommandName().equals("rm")) rm(parser.getArgs());
-    else if(parser.getCommandName().equals("cat")) cat(parser.getArgs());
-    else if(parser.getCommandName().equals("wc")) wc(parser.getArgs());
-    else if(parser.getCommandName().equals("zip")) zip(parser.getArgs());  
-    else if(parser.getCommandName().equals("unzip")) unzip(parser.getArgs());
-    else if(parser.getCommandName().equals("cp"))
-    {
-        String[] arguments = parser.getArgs();
-        if(arguments.length > 0 && arguments[0].equals("-r")) cp_r(arguments);
-        else cp(arguments);
+            fis = new FileInputStream(zipFile);
+            zis = new ZipInputStream(fis); //reads zip data
+            ZipEntry entry;
+
+            while((entry = zis.getNextEntry()) != null)
+            {
+
+                String entryName = entry.getName();
+                File newFile = new File(extractDir, entryName);
+                String canonicalDestPath = extractDir.getCanonicalPath(), canonicalNewFilePath = newFile.getCanonicalPath();
+                //using getCanonicalPath() function to get full right path
+
+                if(!canonicalNewFilePath.startsWith(canonicalDestPath + File.separator))
+                {
+
+                    System.out.println("unzip: invalid entry path: " + entryName);
+
+                    zis.closeEntry();
+
+                    continue;
+
+                }
+
+                //if the zipped file is a dir
+                if(entry.isDirectory()) newFile.mkdirs();
+                else
+                {
+
+                    File parent = newFile.getParentFile();
+
+                    //create parent dir if not existing
+                    if(parent != null && !parent.exists()) parent.mkdirs();
+
+                    FileOutputStream fos = new FileOutputStream(newFile);
+                    byte[] buffer = new byte[1024];
+                    int length;
+
+                    while((length = zis.read(buffer)) > 0) fos.write(buffer, 0, length);
+
+                    fos.close();
+
+                }
+
+                zis.closeEntry();
+
+            }
+
+            System.out.println("Successfully extracted: " + zipFile.getName());
+
+        }
+        catch(IOException error)
+        {
+
+            System.out.println("unzip: error extracting zip file: " + error.getMessage());
+
+        }
+        finally
+        {
+
+            try
+            {
+
+                if(zis != null) zis.close();
+                if(fis != null) fis.close();
+
+            }
+            catch(IOException e)
+            {
+
+                System.out.println("unzip: error closing streams");
+
+            }
+
+        }
+
     }
-}
+    public void exit(String commandName)
+    {
+
+        if(commandName.equals("exit"))
+        {System.exit(0);}
+
+    }
+
+    public void chooseCommandAction() throws IOException
+    {
+
+        String[] arguments = parser.getArgs();
+        boolean override = false, append = false;
+        int index = 0;
+
+        //see the arguments have '>' or '>>' and get their index
+        for(int i = 0; i < arguments.length; i++)
+        {
+
+            if(arguments[i].equals(">"))
+            {
+
+                override = true;
+                index = i;
+
+                break;
+
+            }
+            else if(arguments[i].equals(">>"))
+            {
+
+                append = true;
+                index = i;
+
+                break;
+
+            }
+
+        }
+
+        if(parser.getCommandName().equals("pwd"))
+        {
+
+            if(arguments.length > 2)
+            {
+
+                System.out.println("Invalid Arguments");
+
+                return;
+
+            }
+            if(override)
+            {
+
+                try
+                {
+
+                    FileWriter fw = new FileWriter(arguments[1], false); //false for override
+
+                    fw.write(pwd(new String[]{})); //writes output into file, creates it if not existing
+                    fw.close();
+
+                }
+                catch(IOException error)
+                {
+
+                    System.out.println("Error writing to file: " + error.getMessage());
+
+                }
+
+            }
+            else if(append)
+            {
+
+                try
+                {
+
+                    FileWriter fw = new FileWriter(arguments[1], true); //true for append
+
+                    fw.write(pwd(new String[]{})); //writes output into file, creates it if not existing
+                    fw.close();
+
+                }
+                catch(IOException error)
+                {
+
+                    System.out.println("Error writing to file: " + error.getMessage());
+
+                }
+
+            }
+            else System.out.println(pwd(arguments));
+
+        }
+        else if(parser.getCommandName().equals("cd")) cd(parser.getArgs());
+        else if(parser.getCommandName().equals("mkdir")) mkdir(parser.getArgs());
+        else if(parser.getCommandName().equals("ls"))
+        {
+
+            if(arguments.length > 2)
+            {
+
+                System.out.println("Invalid Arguments");
+
+                return;
+
+            }
+            if(override)
+            {
+
+                try
+                {
+
+                    FileWriter fw = new FileWriter(arguments[1], false); //false for override
+
+                    fw.write(ls(new String[]{})); //writes output into file, creates it if not existing
+                    fw.close();
+
+                }
+                catch(IOException error)
+                {
+
+                    System.out.println("Error writing to file: " + error.getMessage());
+
+                }
+
+            }
+            else if(append)
+            {
+
+                try
+                {
+
+                    FileWriter fw = new FileWriter(arguments[1], true); //true for append
+
+                    fw.write(ls(new String[]{})); //writes output into file, creates it if not existing
+                    fw.close();
+
+                }
+                catch(IOException error)
+                {
+
+                    System.out.println("Error writing to file: " + error.getMessage());
+
+                }
+
+            }
+            else System.out.println(ls(arguments));
+        }
+        else if(parser.getCommandName().equals("touch")) touch(parser.getArgs());
+        else if(parser.getCommandName().equals("rmdir")) rmdir(parser.getArgs());
+        else if(parser.getCommandName().equals("rm")) rm(parser.getArgs());
+        else if(parser.getCommandName().equals("cat"))
+        {
+
+            if(arguments.length > 5)
+            {
+
+                System.out.println("Invalid Arguments");
+
+                return;
+
+            }
+            if(override)
+            {
+
+                try
+                {
+
+                    FileWriter fw = null;
+                    String[] tempArgs =  new String[arguments.length];
+
+                    if(index == 1)
+                    {
+
+                        fw = new FileWriter(arguments[2], false); //false for override
+
+                        tempArgs = Arrays.copyOfRange(arguments, 0, 1);
+
+                    }
+                    else if(index == 2)
+                    {
+
+                        fw = new FileWriter(arguments[3], false);
+
+                        tempArgs = Arrays.copyOfRange(arguments, 0, 2);
+
+                    }
+
+                    fw.write(cat(tempArgs)); //writes output into file, creates it if not existing
+                    fw.close();
+
+                }
+                catch(IOException error)
+                {
+
+                    System.out.println("Error writing to file: " + error.getMessage());
+
+                }
+
+            }
+            else if(append)
+            {
+
+                try
+                {
+
+                    FileWriter fw = null;
+                    String[] tempArgs =  new String[arguments.length];
+
+                    if(index == 1)
+                    {
+
+                        fw = new FileWriter(arguments[2], true ); //true for append
+
+                        tempArgs = Arrays.copyOfRange(arguments, 0, 1);
+
+                    }
+                    else if(index == 2)
+                    {
+
+                        fw = new FileWriter(arguments[2], true ); //true for append
+
+                        tempArgs = Arrays.copyOfRange(arguments, 0, 2);
+
+                    }
+
+                    fw.write(cat(tempArgs)); //writes output into file, creates it if not existing
+                    fw.close();
+
+                }
+                catch(IOException error)
+                {
+
+                    System.out.println("Error writing to file: " + error.getMessage());
+
+                }
+
+            }
+            else System.out.println(cat(parser.getArgs()));
+
+        }
+        else if(parser.getCommandName().equals("wc"))
+        {
+
+            if(arguments.length > 3)
+            {
+
+                System.out.println("Invalid Arguments");
+
+                return;
+
+            }
+            if(override)
+            {
+
+                try
+                {
+
+                    FileWriter fw = fw = new FileWriter(arguments[2], false); //false for override
+
+                    fw.write(wc(new String[]{arguments[0]})); //writes output into file, creates it if not existing
+                    fw.close();
+
+                }
+                catch(IOException error)
+                {
+
+                    System.out.println("Error writing to file: " + error.getMessage());
+
+                }
+
+            }
+            else if(append)
+            {
+
+                try
+                {
+
+                    FileWriter fw = fw = new FileWriter(arguments[2], true); //true for append
+
+                    fw.write(wc(new String[]{arguments[0]})); //writes output into file, creates it if not existing
+                    fw.close();
+
+                }
+                catch(IOException error)
+                {
+
+                    System.out.println("Error writing to file: " + error.getMessage());
+
+                }
+
+            }
+            else System.out.println(wc(parser.getArgs()));
+
+        }
+        else if(parser.getCommandName().equals("zip")) zip(parser.getArgs());
+        else if(parser.getCommandName().equals("unzip")) unzip(parser.getArgs());
+        else if(parser.getCommandName().equals("exit")) exit(parser.getCommandName());
+        else if(parser.getCommandName().equals("cp"))
+        {
+
+            if(arguments.length > 0 && arguments[0].equals("-r")) cp_r(arguments);
+            else cp(arguments);
+
+        }
+        else System.out.println(parser.getCommandName() + ": command not found");
+
+    }
     
-    public static void main(String[] args)
+    public static void main(String[] args) throws IOException
     {
 
         Terminal terminal = new Terminal();
@@ -1164,23 +1443,13 @@ public void unzip(String[] args)
         {
 
             System.out.print("> ");
-            System.out.flush();
 
             String input = scanner.nextLine();
 
-            if(input.equals("exit")) break;
-
             if(terminal.parser.parse(input)) terminal.chooseCommandAction();
-            else
-            {
-
-                System.out.println("error");
-
-            }
+            else System.out.println("error");
 
         }
-
-        scanner.close();
 
     }
 
