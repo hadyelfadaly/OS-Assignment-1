@@ -10,6 +10,11 @@ import java.util.Collections;
 import java.util.Arrays;
 import java.io.BufferedReader;
 import java.io.FileReader;
+import java.util.zip.ZipInputStream;
+import java.util.zip.ZipOutputStream;
+import java.util.zip.ZipEntry;
+import java.io.FileOutputStream;
+import java.io.FileInputStream;
 
 class Parser
 {
@@ -808,29 +813,346 @@ public void wc(String [] args)
     System.out.println(lines + " " + words + " " + charCount + " " + filename);
 
 }
+public void zip(String[] args)
+{
+    // Check if we have enough arguments
+    if(args.length < 2)
+    {
+        System.out.println("zip: requires at least 2 arguments (archive name and file/directory)");
+        return;
+    }
+
+    String zipFileName = args[0];
+    File zipFile = new File(zipFileName);
+
+    if(!zipFile.isAbsolute())
+        {
+            zipFile = new File(currentDirectory, zipFileName);
+        }
+    
+    // Check if -r flag is present for recursive directory compression
+    boolean recursive = false;
+    int startIndex = 1;
+    
+    if(args[1].equals("-r"))
+    {
+        recursive = true;
+        startIndex = 2;
+        
+        if(args.length < 3)
+        {
+            System.out.println("zip: -r requires directory path");
+            return;
+        }
+    }
+    
+    try
+    {
+        // Create zip file
+        FileOutputStream fos = new FileOutputStream(zipFile);
+        ZipOutputStream zos = new ZipOutputStream(fos);
+        
+        if(recursive)
+        {
+            // Compress directory recursively
+            String directoryPath = args[2];
+            File directory = new File(directoryPath);
+            
+            if(!directory.isAbsolute())
+            {
+                directory = new File(currentDirectory, directoryPath);
+            }
+            
+            if(!directory.exists())
+            {
+                System.out.println("zip: directory does not exist: " + directoryPath);
+                zos.close();
+                fos.close();
+                return;
+            }
+            
+            if(!directory.isDirectory())
+            {
+                System.out.println("zip: path is not a directory: " + directoryPath);
+                zos.close();
+                fos.close();
+                return;
+            }
+            
+            // Zip the directory recursively
+            zipDirectory(directory, directory.getName(), zos);
+            
+        }
+        else
+        {
+            // Compress individual files
+            for(int i = startIndex; i < args.length; i++)
+            {
+                File fileToZip = new File(args[i]);
+                
+                if(!fileToZip.isAbsolute())
+                {
+                    fileToZip = new File(currentDirectory, args[i]);
+                }
+                
+                if(!fileToZip.exists())
+                {
+                    System.out.println("zip: file does not exist: " + args[i]);
+                    continue;
+                }
+                
+                if(fileToZip.isDirectory())
+                {
+                    System.out.println("zip: " + args[i] + " is a directory. Use -r flag for directories.");
+                    continue;
+                }
+                
+                // Add file to zip
+                addFileToZip(fileToZip, fileToZip.getName(), zos);
+            }
+        }
+        
+        zos.close();
+        fos.close();
+        System.out.println("Successfully created: " + zipFile.getName());
+        
+    }
+    catch(IOException e)
+    {
+        System.out.println("zip: error creating zip file: " + e.getMessage());
+    }
+}
+// Helper method to add a single file to zip
+private void addFileToZip(File file, String fileName, ZipOutputStream zos) throws IOException
+{
+    FileInputStream fis = new FileInputStream(file);
+    ZipEntry zipEntry = new ZipEntry(fileName);
+    zos.putNextEntry(zipEntry);
+    
+    byte[] buffer = new byte[1024];
+    int length;
+    while((length = fis.read(buffer)) >= 0)
+    {
+        zos.write(buffer, 0, length);
+    }
+    
+    zos.closeEntry();
+    fis.close();
+}
+
+// Helper method to recursively zip a directory
+private void zipDirectory(File folder, String parentFolder, ZipOutputStream zos) throws IOException
+{
+    File[] files = folder.listFiles();
+    
+    if(files == null)
+    {
+        return;
+    }
+    
+    for(File file : files)
+    {
+        if(file.isDirectory())
+        {
+            // Recursively zip subdirectory
+            zipDirectory(file, parentFolder + "/" + file.getName(), zos);
+        }
+        else
+        {
+            // Add file to zip with its relative path
+            addFileToZip(file, parentFolder + "/" + file.getName(), zos);
+        }
+    }
+}
+public void unzip(String[] args)
+{
+    // Check if we have the required arguments
+    if(args.length == 0)
+    {
+        System.out.println("unzip: missing zip file argument");
+        return;
+    }
+    
+    // Parse arguments to handle -d flag and spaces in paths
+    String zipFileName = null;
+    File extractDir = new File(currentDirectory);
+    
+    // Check if -d flag is present
+    boolean hasDFlag = false;
+    int dFlagIndex = -1;
+    
+    for(int i = 0; i < args.length; i++)
+    {
+        if(args[i].equals("-d"))
+        {
+            hasDFlag = true;
+            dFlagIndex = i;
+            break;
+        }
+    }
+    
+    if(hasDFlag)
+    {
+        // Extract zip file name (all args before -d)
+        if(dFlagIndex == 0)
+        {
+            System.out.println("unzip: missing zip file argument before -d");
+            return;
+        }
+        
+        String[] zipNameParts = Arrays.copyOfRange(args, 0, dFlagIndex);
+        zipFileName = String.join(" ", zipNameParts);
+        
+        // Extract destination directory (all args after -d)
+        if(dFlagIndex + 1 >= args.length)
+        {
+            System.out.println("unzip: missing destination directory after -d");
+            return;
+        }
+        
+        String[] destParts = Arrays.copyOfRange(args, dFlagIndex + 1, args.length);
+        String destPath = String.join(" ", destParts);
+        extractDir = new File(destPath);
+        
+        if(!extractDir.isAbsolute())
+        {
+            extractDir = new File(currentDirectory, destPath);
+        }
+    }
+    else
+    {
+        // No -d flag, all args are the zip file name
+        zipFileName = String.join(" ", args);
+    }
+    
+    // Create File object for zip file
+    File zipFile = new File(zipFileName);
+    
+    // Handle relative path for zip file
+    if(!zipFile.isAbsolute())
+    {
+        zipFile = new File(currentDirectory, zipFileName);
+    }
+    
+    // Check if zip file exists
+    if(!zipFile.exists())
+    {
+        System.out.println("unzip: file does not exist: " + zipFileName);
+        return;
+    }
+    
+    if(!zipFile.isFile())
+    {
+        System.out.println("unzip: not a file: " + zipFileName);
+        return;
+    }
+    
+    // Create extraction directory if it doesn't exist
+    if(!extractDir.exists())
+    {
+        boolean created = extractDir.mkdirs();
+        if(!created)
+        {
+            System.out.println("unzip: failed to create extraction directory");
+            return;
+        }
+    }
+    
+    // Extract the zip file
+    FileInputStream fis = null;
+    ZipInputStream zis = null;
+    
+    try
+    {
+        fis = new FileInputStream(zipFile);
+        zis = new ZipInputStream(fis);
+        ZipEntry entry;
+        
+        while((entry = zis.getNextEntry()) != null)
+        {
+            // Security check: prevent path traversal attacks
+            String entryName = entry.getName();
+            File newFile = new File(extractDir, entryName);
+            String canonicalDestPath = extractDir.getCanonicalPath();
+            String canonicalNewFilePath = newFile.getCanonicalPath();
+            
+            if(!canonicalNewFilePath.startsWith(canonicalDestPath + File.separator))
+            {
+                System.out.println("unzip: invalid entry path: " + entryName);
+                zis.closeEntry();
+                continue;
+            }
+            
+            // Create parent directories if needed
+            if(entry.isDirectory())
+            {
+                newFile.mkdirs();
+            }
+            else
+            {
+                // Create parent directories for file
+                File parent = newFile.getParentFile();
+                if(parent != null && !parent.exists())
+                {
+                    parent.mkdirs();
+                }
+                
+                // Extract file
+                FileOutputStream fos = new FileOutputStream(newFile);
+                byte[] buffer = new byte[1024];
+                int length;
+                
+                while((length = zis.read(buffer)) > 0)
+                {
+                    fos.write(buffer, 0, length);
+                }
+                
+                fos.close();
+            }
+            
+            zis.closeEntry();
+        }
+        
+        System.out.println("Successfully extracted: " + zipFile.getName());
+    }
+    catch(IOException e)
+    {
+        System.out.println("unzip: error extracting zip file: " + e.getMessage());
+    }
+    finally
+    {
+        try
+        {
+            if(zis != null) zis.close();
+            if(fis != null) fis.close();
+        }
+        catch(IOException e)
+        {
+            System.out.println("unzip: error closing streams");
+        }
+    }
+}
 
     public void chooseCommandAction()
+{
+    if(parser.getCommandName().equals("pwd")) System.out.println(pwd());
+    else if(parser.getCommandName().equals("cd")) cd(parser.getArgs());
+    else if(parser.getCommandName().equals("mkdir")) mkdir(parser.getArgs());
+    else if(parser.getCommandName().equals("ls")) ls(parser.getArgs());
+    else if(parser.getCommandName().equals("touch")) touch(parser.getArgs());
+    else if(parser.getCommandName().equals("rmdir")) rmdir(parser.getArgs());
+    else if(parser.getCommandName().equals("rm")) rm(parser.getArgs());
+    else if(parser.getCommandName().equals("cat")) cat(parser.getArgs());
+    else if(parser.getCommandName().equals("wc")) wc(parser.getArgs());
+    else if(parser.getCommandName().equals("zip")) zip(parser.getArgs());  
+    else if(parser.getCommandName().equals("unzip")) unzip(parser.getArgs());
+    else if(parser.getCommandName().equals("cp"))
     {
-
-        if(parser.getCommandName().equals("pwd")) System.out.println(pwd());
-        else if(parser.getCommandName().equals("cd")) cd(parser.getArgs());
-        else if(parser.getCommandName().equals("mkdir")) mkdir(parser.getArgs());
-        else if(parser.getCommandName().equals("ls")) ls(parser.getArgs());
-        else if(parser.getCommandName().equals("touch")) touch(parser.getArgs());
-        else if(parser.getCommandName().equals("rmdir")) rmdir(parser.getArgs());
-        else if(parser.getCommandName().equals("rm")) rm(parser.getArgs());
-        else if(parser.getCommandName().equals("cat")) cat(parser.getArgs());
-        else if(parser.getCommandName().equals("wc")) wc(parser.getArgs());
-        else if(parser.getCommandName().equals("cp"))
-        {
-            String[] arguments = parser.getArgs();
-
-            if(arguments.length > 0 && arguments[0].equals("-r")) cp_r(arguments);
-            else cp(arguments);
-
-        }
-
+        String[] arguments = parser.getArgs();
+        if(arguments.length > 0 && arguments[0].equals("-r")) cp_r(arguments);
+        else cp(arguments);
     }
+}
     
     public static void main(String[] args)
     {
