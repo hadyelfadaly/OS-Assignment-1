@@ -101,7 +101,7 @@ class Terminal
 
         parser = new Parser();
         currentDirectory = System.getProperty("user.dir"); //saves current path
-        // into the variable when an instance of terminal is created
+        //into the variable when an instance of terminal is created
 
     }
 
