@@ -1,3 +1,4 @@
+import java.nio.Buffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Scanner;
@@ -7,6 +8,8 @@ import java.nio.file.Files;
 import java.io.IOException;
 import java.util.Collections;
 import java.util.Arrays;
+import java.io.BufferedReader;
+import java.io.FileReader;
 
 class Parser
 {
@@ -24,7 +27,7 @@ class Parser
 
         String[] parts = input.split(" ");
 
-        //the command is always written first thats why we take parts first index
+        //the command is always written first that's why we take parts first index
         commandName = parts[0];
 
         //check if there is arguments inserted
@@ -557,6 +560,255 @@ class Terminal
 
     }
 
+public void rm(String[] args)
+{
+    //checking for an input file
+    if(args.length==0)
+    {
+
+        System.out.println("ERROR , Enter filename. ");
+        return;
+
+    }
+
+    //handling files with spaces in its name.
+    String filename = String.join(" ",args);
+
+    File file = new File(filename);
+
+    //checking if not abs path then use current dir
+    if(!file.isAbsolute())
+    {
+        file = new File (currentDirectory,filename);
+
+    }
+
+    if(!file.exists())
+    {
+
+        System.out.println("No such a file. ");
+
+        return;
+
+    }
+
+    boolean deleted = file.delete();
+
+    if(deleted) return;
+
+    else System.out.println(filename + " : Cannot be deleted. ");
+
+}
+
+
+public void cat(String[] args) {
+
+    if (args.length == 0) {
+
+        System.out.println("Enter argument. ");
+
+        return;
+
+    }
+
+    if (args.length > 2) {
+
+        System.out.println("Maximum 1 or 2 arguments only. ");
+
+    }
+
+    //First case 1 argument
+
+    if (args.length == 1) {
+
+        String filename = args[0];
+        File file = new File(filename);
+
+        //checking if not abs path then use current dir
+        if (!file.isAbsolute()) {
+            file = new File(currentDirectory, filename);
+        }
+
+        //checking if the file exists
+        if (!file.exists()) {
+            System.out.println("No such file. ");
+
+            return;
+        }
+
+        if (!file.isFile()) {
+            System.out.println(filename + "is a directory");
+        }
+
+        BufferedReader reader = null;
+        try {
+            reader = new BufferedReader(new FileReader(file));
+            String line;
+            while ((line = reader.readLine()) != null) {
+                System.out.println(line);
+            }
+        } catch (IOException e) {
+            System.out.println("error reading file - " + e.getMessage());
+        } finally {
+            try {
+                if (reader != null) reader.close();
+            } catch (IOException e) {
+                System.out.println("error closing file");
+            }
+        }
+    } else if (args.length == 2) {
+        String fileName1 = args[0];
+        String fileName2 = args[1];
+
+        File file1 = new File(fileName1);
+        File file2 = new File(fileName2);
+
+        // if not abs paths, use current dir
+        if (!file1.isAbsolute())
+            file1 = new File(currentDirectory, fileName1);
+        if (!file2.isAbsolute())
+            file2 = new File(currentDirectory, fileName2);
+
+        // Checking both files existing
+        if (!file1.exists()) {
+            System.out.println(fileName1 + ": no such file");
+            return;
+        }
+        if (!file2.exists()) {
+            System.out.println(fileName2 + ": no such file");
+            return;
+        }
+
+        // Checking if both are files
+        if (!file1.isFile()) {
+            System.out.println(fileName1 + ": is a directory");
+            return;
+        }
+        if (!file2.isFile()) {
+            System.out.println(fileName2 + ": is a directory");
+            return;
+        }
+
+        BufferedReader reader1 = null;
+        BufferedReader reader2 = null;
+        try
+        {
+            // Reading first file
+            reader1 = new BufferedReader(new FileReader(file1));
+            String line;
+            while((line = reader1.readLine()) != null)
+            {
+                System.out.println(line);
+            }
+
+            // Read second file
+            reader2 = new BufferedReader(new FileReader(file2));
+            while((line = reader2.readLine()) != null)
+            {
+                System.out.println(line);
+            }
+        }
+        catch(IOException e)
+        {
+            System.out.println("error reading files: " + e.getMessage());
+        }
+        finally
+        {
+            try
+            {
+                if(reader1 != null) reader1.close();
+                if(reader2 != null) reader2.close();
+            }
+            catch(IOException e)
+            {
+                System.out.println("error closing files");
+            }
+        }
+    }
+}
+
+public void wc(String [] args)
+{
+    if(args.length==0)
+    {
+
+        System.out.println("Enter an argument. ");
+
+        return;
+
+    }
+
+    String filename = String.join(" ",args);
+
+    File file = new File(filename);
+
+    if(!file.isAbsolute())
+    {
+        file = new File(currentDirectory,filename);
+    }
+
+    if(!file.exists())
+    {
+
+        System.out.println(filename + " no such a file. ");
+        return;
+
+    }
+
+    if(!file.isFile())
+    {
+        System.out.println(filename + " is a directory. ");
+        return;
+    }
+
+    int lines=0;
+    int words=0;
+    int charCount=0;
+
+    BufferedReader reader = null;
+
+    try
+    {
+        reader = new BufferedReader(new FileReader(file));
+        String line;
+        while((line = reader.readLine()) != null)
+        {
+            lines++;
+            charCount += line.length();
+
+            // counting words split by space
+            String trimmedLine = line.trim();
+            if(!trimmedLine.isEmpty())
+            {
+                String[] word = trimmedLine.split("\\s+");
+                words += word.length;
+            }
+        }
+
+
+    }
+    catch(IOException e)
+    {
+        System.out.println("error reading file - " + e.getMessage());
+        return;
+    }
+    finally
+    {
+        try
+        {
+            if(reader != null) reader.close();
+        }
+        catch(IOException e)
+        {
+            System.out.println("error closing file");
+        }
+    }
+
+    // Print output in format: lines words characters filename
+    System.out.println(lines + " " + words + " " + charCount + " " + filename);
+
+}
+
     public void chooseCommandAction()
     {
 
@@ -566,6 +818,9 @@ class Terminal
         else if(parser.getCommandName().equals("ls")) ls(parser.getArgs());
         else if(parser.getCommandName().equals("touch")) touch(parser.getArgs());
         else if(parser.getCommandName().equals("rmdir")) rmdir(parser.getArgs());
+        else if(parser.getCommandName().equals("rm")) rm(parser.getArgs());
+        else if(parser.getCommandName().equals("cat")) cat(parser.getArgs());
+        else if(parser.getCommandName().equals("wc")) wc(parser.getArgs());
         else if(parser.getCommandName().equals("cp"))
         {
             String[] arguments = parser.getArgs();
