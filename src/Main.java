@@ -600,7 +600,7 @@ class Terminal
 
                 while((line = reader.readLine()) != null) result += line + "\n";
 
-                result = result.substring(0, result.length() - 1); //remove the last '\n'
+                if(!result.isEmpty()) result = result.substring(0, result.length() - 1); //remove the last '\n'
 
             }
             catch(IOException error)
@@ -657,7 +657,7 @@ class Terminal
 
                 while((line = reader2.readLine()) != null) result += line + "\n";
 
-                result = result.substring(0, result.length() - 1); //remove the last '\n'
+                if(!result.isEmpty()) result = result.substring(0, result.length() - 1); //remove the last '\n'
 
             }
             catch(IOException error)
@@ -1130,13 +1130,118 @@ class Terminal
         {System.exit(0);}
 
     }
+    public void override(String[] args, String commandName)
+    {
+
+        try
+        {
+
+            FileWriter fw = null;
+            String res = "";
+
+            //pwd or ls
+            if(args.length == 2)
+            {
+
+                fw = new FileWriter(args[1], false); //false for override
+                args = new String[]{}; //no args
+
+                //check which command is it
+                if(commandName.equals("pwd")) res = pwd(args);
+                else if(commandName.equals("ls")) res = ls(args);
+
+            }
+            else if(args.length == 3)
+            {
+
+                fw = new FileWriter(args[2], false);
+                args = new String[]{args[0]}; //only first file we need in case of cat and wc
+
+                if(commandName.equals("cat")) res = cat(args);
+                else if(commandName.equals("wc")) res = wc(args);
+
+            }
+            else if(args.length == 4) //only 2nd cat case
+            {
+
+                fw = new FileWriter(args[3], false);
+                args = new String[]{args[0], args[1]}; //only first 2 files we need in case of cat
+
+                res = cat(args);
+
+            }
+
+            fw.write(res); //writes output into file, creates it if not existing
+            fw.close();
+
+        }
+        catch(IOException error)
+        {
+
+            System.out.println("Error writing to file: " + error.getMessage());
+
+        }
+
+    }
+    public void append(String[] args, String commandName)
+    {
+
+        try
+        {
+
+            FileWriter fw = null;
+            String res = "";
+
+            //pwd or ls
+            if(args.length == 2)
+            {
+
+                fw = new FileWriter(args[1], true); //true for append
+                args = new String[]{}; //no args
+
+                //check which command is it
+                if(commandName.equals("pwd")) res = pwd(args);
+                else if(commandName.equals("ls")) res = ls(args);
+
+            }
+            else if(args.length == 3)
+            {
+
+                fw = new FileWriter(args[2], true);
+                args = new String[]{args[0]}; //only first file we need in case of cat and wc
+
+                if(commandName.equals("cat")) res = cat(args);
+                else if(commandName.equals("wc")) res = wc(args);
+
+            }
+            else if(args.length == 4) //only 2nd cat case
+            {
+
+                fw = new FileWriter(args[3], true);
+                args = new String[]{args[0], args[1]}; //only first 2 files we need in case of cat
+
+                res = cat(args);
+
+            }
+
+            fw.write(res); //writes output into file, creates it if not existing
+            fw.close();
+
+        }
+        catch(IOException error)
+        {
+
+            System.out.println("Error writing to file: " + error.getMessage());
+
+        }
+
+    }
 
     public void chooseCommandAction() throws IOException
     {
 
         String[] arguments = parser.getArgs();
         boolean override = false, append = false;
-        int index = 0;
 
         //see the arguments have '>' or '>>' and get their index
         for(int i = 0; i < arguments.length; i++)
@@ -1146,7 +1251,6 @@ class Terminal
             {
 
                 override = true;
-                index = i;
 
                 break;
 
@@ -1155,7 +1259,6 @@ class Terminal
             {
 
                 append = true;
-                index = i;
 
                 break;
 
@@ -1174,51 +1277,13 @@ class Terminal
                 return;
 
             }
-            if(override)
-            {
-
-                try
-                {
-
-                    FileWriter fw = new FileWriter(arguments[1], false); //false for override
-
-                    fw.write(pwd(new String[]{})); //writes output into file, creates it if not existing
-                    fw.close();
-
-                }
-                catch(IOException error)
-                {
-
-                    System.out.println("Error writing to file: " + error.getMessage());
-
-                }
-
-            }
-            else if(append)
-            {
-
-                try
-                {
-
-                    FileWriter fw = new FileWriter(arguments[1], true); //true for append
-
-                    fw.write(pwd(new String[]{})); //writes output into file, creates it if not existing
-                    fw.close();
-
-                }
-                catch(IOException error)
-                {
-
-                    System.out.println("Error writing to file: " + error.getMessage());
-
-                }
-
-            }
+            if(override) override(arguments, "pwd");
+            else if (append) append(arguments, "pwd");
             else System.out.println(pwd(arguments));
 
         }
-        else if(parser.getCommandName().equals("cd")) cd(parser.getArgs());
-        else if(parser.getCommandName().equals("mkdir")) mkdir(parser.getArgs());
+        else if(parser.getCommandName().equals("cd")) cd(arguments);
+        else if(parser.getCommandName().equals("mkdir")) mkdir(arguments);
         else if(parser.getCommandName().equals("ls"))
         {
 
@@ -1230,51 +1295,14 @@ class Terminal
                 return;
 
             }
-            if(override)
-            {
-
-                try
-                {
-
-                    FileWriter fw = new FileWriter(arguments[1], false); //false for override
-
-                    fw.write(ls(new String[]{})); //writes output into file, creates it if not existing
-                    fw.close();
-
-                }
-                catch(IOException error)
-                {
-
-                    System.out.println("Error writing to file: " + error.getMessage());
-
-                }
-
-            }
-            else if(append)
-            {
-
-                try
-                {
-
-                    FileWriter fw = new FileWriter(arguments[1], true); //true for append
-
-                    fw.write(ls(new String[]{})); //writes output into file, creates it if not existing
-                    fw.close();
-
-                }
-                catch(IOException error)
-                {
-
-                    System.out.println("Error writing to file: " + error.getMessage());
-
-                }
-
-            }
+            if(override) override(arguments, "ls");
+            else if(append) append(arguments, "ls");
             else System.out.println(ls(arguments));
+
         }
-        else if(parser.getCommandName().equals("touch")) touch(parser.getArgs());
-        else if(parser.getCommandName().equals("rmdir")) rmdir(parser.getArgs());
-        else if(parser.getCommandName().equals("rm")) rm(parser.getArgs());
+        else if(parser.getCommandName().equals("touch")) touch(arguments);
+        else if(parser.getCommandName().equals("rmdir")) rmdir(arguments);
+        else if(parser.getCommandName().equals("rm")) rm(arguments);
         else if(parser.getCommandName().equals("cat"))
         {
 
@@ -1286,141 +1314,29 @@ class Terminal
                 return;
 
             }
-            if(override)
-            {
-
-                try
-                {
-
-                    FileWriter fw = null;
-                    String[] tempArgs =  new String[arguments.length];
-
-                    if(index == 1)
-                    {
-
-                        fw = new FileWriter(arguments[2], false); //false for override
-
-                        tempArgs = Arrays.copyOfRange(arguments, 0, 1);
-
-                    }
-                    else if(index == 2)
-                    {
-
-                        fw = new FileWriter(arguments[3], false);
-
-                        tempArgs = Arrays.copyOfRange(arguments, 0, 2);
-
-                    }
-
-                    fw.write(cat(tempArgs)); //writes output into file, creates it if not existing
-                    fw.close();
-
-                }
-                catch(IOException error)
-                {
-
-                    System.out.println("Error writing to file: " + error.getMessage());
-
-                }
-
-            }
-            else if(append)
-            {
-
-                try
-                {
-
-                    FileWriter fw = null;
-                    String[] tempArgs =  new String[arguments.length];
-
-                    if(index == 1)
-                    {
-
-                        fw = new FileWriter(arguments[2], true ); //true for append
-
-                        tempArgs = Arrays.copyOfRange(arguments, 0, 1);
-
-                    }
-                    else if(index == 2)
-                    {
-
-                        fw = new FileWriter(arguments[2], true ); //true for append
-
-                        tempArgs = Arrays.copyOfRange(arguments, 0, 2);
-
-                    }
-
-                    fw.write(cat(tempArgs)); //writes output into file, creates it if not existing
-                    fw.close();
-
-                }
-                catch(IOException error)
-                {
-
-                    System.out.println("Error writing to file: " + error.getMessage());
-
-                }
-
-            }
-            else System.out.println(cat(parser.getArgs()));
+            if(override) override(arguments, "cat");
+            else if(append) append(arguments, "cat");
+            else System.out.println(cat(arguments));
 
         }
         else if(parser.getCommandName().equals("wc"))
         {
 
-            if(arguments.length > 3)
-            {
+                if(arguments.length > 3)
+                {
 
-                System.out.println("Invalid Arguments");
+                    System.out.println("Invalid Arguments");
 
-                return;
+                    return;
+
+                }
+                if(override) override(arguments, "wc");
+                else if(append) append(arguments, "wc");
+                else System.out.println(wc(arguments));
 
             }
-            if(override)
-            {
-
-                try
-                {
-
-                    FileWriter fw = fw = new FileWriter(arguments[2], false); //false for override
-
-                    fw.write(wc(new String[]{arguments[0]})); //writes output into file, creates it if not existing
-                    fw.close();
-
-                }
-                catch(IOException error)
-                {
-
-                    System.out.println("Error writing to file: " + error.getMessage());
-
-                }
-
-            }
-            else if(append)
-            {
-
-                try
-                {
-
-                    FileWriter fw = fw = new FileWriter(arguments[2], true); //true for append
-
-                    fw.write(wc(new String[]{arguments[0]})); //writes output into file, creates it if not existing
-                    fw.close();
-
-                }
-                catch(IOException error)
-                {
-
-                    System.out.println("Error writing to file: " + error.getMessage());
-
-                }
-
-            }
-            else System.out.println(wc(parser.getArgs()));
-
-        }
-        else if(parser.getCommandName().equals("zip")) zip(parser.getArgs());
-        else if(parser.getCommandName().equals("unzip")) unzip(parser.getArgs());
+        else if(parser.getCommandName().equals("zip")) zip(arguments);
+        else if(parser.getCommandName().equals("unzip")) unzip(arguments);
         else if(parser.getCommandName().equals("exit")) exit(parser.getCommandName());
         else if(parser.getCommandName().equals("cp"))
         {
